@@ -82,9 +82,6 @@ if __name__ == "__main__":
     stopping_condition = False
     epoch = 0
 
-    last_train_accuracy = 0
-    last_validation_accuracy = 0
-
     while epoch < args.epochs:
         random.shuffle(train_data)
         model.train()
@@ -135,7 +132,7 @@ if __name__ == "__main__":
         print(loss_total/loss_count)
         print("Training completed for epoch {}".format(epoch + 1))
         print("Training accuracy for epoch {}: {}".format(epoch + 1, correct / total))
-        trainning_accuracy = correct/total
+        training_accuracy = correct/total
 
         
         print("Validation started for epoch {}".format(epoch + 1))
@@ -190,6 +187,6 @@ if __name__ == "__main__":
     with open("rnn_results.out", "a") as f:
         f.write("-"*60 + "\n")
         f.write(f"Args: {args}\n")
-        f.write(f"Training accuracy: {last_train_accuracy}\n")
-        f.write(f"Validation accuracy: {last_validation_accuracy}\n")
+        f.write(f"Training accuracy: {training_accuracy}\n")
+        f.write(f"Validation accuracy: {validation_accuracy}\n")
         f.write(f"Testing accuracy: {test_accuracy}\n")

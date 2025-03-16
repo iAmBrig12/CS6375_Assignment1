@@ -15,7 +15,7 @@ class FFNN(nn.Module):
         super(FFNN, self).__init__()
         self.h = h
         self.W1 = nn.Linear(input_dim, h)
-        self.activation = nn.ReLU()
+        self.activation = nn.LeakyReLU()
         self.output_dim = 5
         self.W2 = nn.Linear(h, self.output_dim)
         self.softmax = nn.LogSoftmax(dim=1) 
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         f.write("-"*60 + "\n")
         f.write(f"Args: {args}\n")
         f.write(f"Training accuracy: {train_accuracy}\n")
-        f.write(f"Validation accuracy: {test_accuracy}\n")
+        f.write(f"Validation accuracy: {validation_accuracy}\n")
         f.write(f"Testing accuracy: {test_accuracy}\n")
 
 
