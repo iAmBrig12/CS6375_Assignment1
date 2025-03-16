@@ -136,3 +136,4 @@ validation.json
 test.json
 Data_Embedding.zip
 glove.6B.50d.txt
+*.out

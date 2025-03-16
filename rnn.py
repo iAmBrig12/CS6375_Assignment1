@@ -1,12 +1,7 @@
-import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn import init
 import torch.optim as optim
-import math
 import random
-import os
-import time
 from tqdm import tqdm
 import json
 import string
@@ -17,10 +12,10 @@ unk = '<UNK>'
 # Consult the PyTorch documentation for information on the functions used below:
 # https://pytorch.org/docs/stable/torch.html
 class RNN(nn.Module):
-    def __init__(self, input_dim, h):  # Add relevant parameters
+    def __init__(self, input_dim, h):
         super(RNN, self).__init__()
         self.h = h
-        self.numOfLayer = 16
+        self.numOfLayer = 8
         self.rnn = nn.RNN(input_dim, h, self.numOfLayer, nonlinearity='tanh')
         self.W = nn.Linear(h, 5)
         self.softmax = nn.LogSoftmax(dim=1)
@@ -30,41 +25,33 @@ class RNN(nn.Module):
         return self.loss(predicted_vector, gold_label)
 
     def forward(self, inputs):
-        # Dynamically set the batch size for h0 based on inputs
-        batch_size = inputs.size(1)  # Get the batch size from inputs
-        h0 = torch.zeros(self.numOfLayer, batch_size, self.h, device=inputs.device)  # Move h0 to the same device as inputs
+        inputs = inputs.to(device)  # Move input to device
+        x, _ = self.rnn(inputs)
+        x = torch.sum(x, dim=0)
+        x = self.W(x)
+        x = self.softmax(x)
 
-        rnn_out, hidden = self.rnn(inputs, h0) 
-
-        summed_output = torch.sum(rnn_out, dim=0)
-        output = self.W(summed_output)
-        predicted_vector = self.softmax(output)
-
-        # # [to fill] obtain output layer representations
-        # output = self.W(hidden[-1])
-
-        # # [to fill] sum over output 
-        # summed_output = torch.sum(output, dim=0)
-
-        # # [to fill] obtain probability dist.
-        # predicted_vector = self.softmax(summed_output)
-
-        return predicted_vector
+        return x
 
 
-def load_data(train_data, val_data):
+def load_data(train_data, val_data, test_data):
     with open(train_data) as training_f:
         training = json.load(training_f)
     with open(val_data) as valid_f:
         validation = json.load(valid_f)
+    with open(test_data) as test_f:
+        test = json.load(test_f)
 
     tra = []
     val = []
+    tes = []
     for elt in training:
         tra.append((elt["text"].split(),int(elt["stars"]-1)))
     for elt in validation:
         val.append((elt["text"].split(),int(elt["stars"]-1)))
-    return tra, val
+    for elt in test:
+        tes.append((elt["text"].split(),int(elt["stars"]-1)))
+    return tra, val, tes
 
 
 if __name__ == "__main__":
@@ -82,12 +69,11 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     print("========== Loading data ==========")
-    train_data, valid_data = load_data(args.train_data, args.val_data)  # X_data is a list of pairs (document, y); y in {0,1,2,3,4}
+    train_data, valid_data, test_data = load_data(args.train_data, args.val_data, args.test_data)  # X_data is a list of pairs (document, y); y in {0,1,2,3,4}
 
     print("========== Vectorizing data ==========")
     model = RNN(50, args.hidden_dim).to(device)  # Move model to GPU if available
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    # optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
     word_embedding = pickle.load(open('./word_embedding.pkl', 'rb'))
 
     def get_word_vector(word):
@@ -151,7 +137,6 @@ if __name__ == "__main__":
         print("Training accuracy for epoch {}: {}".format(epoch + 1, correct / total))
         trainning_accuracy = correct/total
 
-
         
         print("Validation started for epoch {}".format(epoch + 1))
         with torch.no_grad():
@@ -176,20 +161,35 @@ if __name__ == "__main__":
             print("Validation accuracy for epoch {}: {}".format(epoch + 1, correct / total))
             validation_accuracy = correct/total
 
-        # if validation_accuracy < last_validation_accuracy and trainning_accuracy > last_train_accuracy:
-        #     stopping_condition=True
-        #     print("Training done to avoid overfitting!")
-        #     print("Best validation accuracy is:", last_validation_accuracy)
-        # else:
-        #     last_validation_accuracy = validation_accuracy
-        #     last_train_accuracy = trainning_accuracy
-
         epoch += 1
 
-    last_validation_accuracy = validation_accuracy
-    last_train_accuracy = trainning_accuracy
+
+    print("========== Training completed ==========")
+    print("========== Testing started ==========")
+    with torch.no_grad():
+        model.eval()
+        correct = 0
+        total = 0
+        random.shuffle(test_data)
+        test_data = test_data
+
+        for input_words, gold_label in tqdm(test_data):
+            input_words = " ".join(input_words)
+            input_words = input_words.translate(input_words.maketrans("", "", string.punctuation)).split()
+            vectors = [get_word_vector(i) for i in input_words]
+            vectors = torch.tensor(vectors).view(len(vectors), 1, -1).to(device)  # Move to device
+            gold_label = torch.tensor([gold_label]).to(device)  # Move label to device
+            output = model(vectors)
+            predicted_label = torch.argmax(output)
+            correct += int(predicted_label == gold_label)
+            total += 1
+        test_accuracy = correct / total
+        print("Testing accuracy: {}".format(test_accuracy))
 
 
-    # You may find it beneficial to keep track of training accuracy or training loss;
-
-    # Think about how to update the model and what this entails. Consider ffnn.py and the PyTorch documentation for guidance
+    with open("rnn_results.out", "a") as f:
+        f.write("-"*60 + "\n")
+        f.write(f"Args: {args}\n")
+        f.write(f"Training accuracy: {last_train_accuracy}\n")
+        f.write(f"Validation accuracy: {last_validation_accuracy}\n")
+        f.write(f"Testing accuracy: {test_accuracy}\n")

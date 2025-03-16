@@ -1,10 +1,7 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import math
 import random
-import os
 import time
 from tqdm import tqdm
 import json
@@ -21,7 +18,7 @@ class FFNN(nn.Module):
         self.activation = nn.ReLU()
         self.output_dim = 5
         self.W2 = nn.Linear(h, self.output_dim)
-        self.softmax = nn.LogSoftmax(dim=1)  # Added dim=1
+        self.softmax = nn.LogSoftmax(dim=1) 
         self.loss = nn.NLLLoss()
 
     def compute_Loss(self, predicted_vector, gold_label):
@@ -29,11 +26,11 @@ class FFNN(nn.Module):
 
     def forward(self, input_vector):
         input_vector = input_vector.to(device)  # Move input to device
-        predicted_label = self.W1(input_vector)
-        predicted_label = self.activation(predicted_label)
-        predicted_vector = self.W2(predicted_label)
-        predicted_vector = self.softmax(predicted_vector)
-        return predicted_vector
+        x = self.W1(input_vector)
+        x = self.activation(x)
+        x = self.W2(x)
+        x = self.softmax(x)
+        return x
 
 def make_vocab(data):
     vocab = set()
@@ -124,6 +121,9 @@ if __name__ == "__main__":
     model = FFNN(input_dim=len(vocab), h=args.hidden_dim).to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
+    train_accuracy = 0
+    validation_accuracy = 0
+
     print(f"========== Training for {args.epochs} epochs ==========")
     for epoch in range(args.epochs):
         model.train()
@@ -144,8 +144,9 @@ if __name__ == "__main__":
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
+        train_accuracy = correct / total
         print(f"Training completed for epoch {epoch + 1}")
-        print(f"Training accuracy for epoch {epoch + 1}: {correct / total}")
+        print(f"Training accuracy for epoch {epoch + 1}: {train_accuracy}")
         print(f"Training time for this epoch: {time.time() - start_time}")
 
         model.eval()
@@ -162,8 +163,9 @@ if __name__ == "__main__":
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
+        validation_accuracy = correct / total
         print(f"Validation completed for epoch {epoch + 1}")
-        print(f"Validation accuracy for epoch {epoch + 1}: {correct / total}")
+        print(f"Validation accuracy for epoch {epoch + 1}: {validation_accuracy}")
         print(f"Validation time for this epoch: {time.time() - start_time}")
 
     print("========== Training completed ==========")
@@ -178,5 +180,16 @@ if __name__ == "__main__":
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    print(f"Testing accuracy: {correct / total}")
+    test_accuracy = correct / total
+    print(f"Testing accuracy: {test_accuracy}")
     print("========== Testing completed ==========")
+
+    # Save results to ffnn_results.out
+    with open("ffnn_results.out", "a") as f:
+        f.write("-"*60 + "\n")
+        f.write(f"Args: {args}\n")
+        f.write(f"Training accuracy: {train_accuracy}\n")
+        f.write(f"Validation accuracy: {test_accuracy}\n")
+        f.write(f"Testing accuracy: {test_accuracy}\n")
+
+
