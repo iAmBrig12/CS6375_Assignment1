@@ -13,11 +13,6 @@ Install the following Python packages before running the scripts:
 
 Usage:
 
-**Load Glove Embedding**
-
-``python load_glove_embedding.py``  
-Loads the GloVe embeddings and prepares them for use in the models.
-
 **Preprocess Data**
 
 ``python data_preprocess.py``  
